@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EW Radar Anomaly Detection System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 font-sans min-h-screen p-6">
+    <div class="max-w-4xl mx-auto space-y-6">
+        
+        <!-- Header -->
+        <header class="border-b border-slate-700 pb-4">
+            <h1 class="text-3xl font-bold text-sky-400">Electronic Warfare (EW) Radar Telemetry</h1>
+            <p class="text-slate-400 text-sm mt-1">Real-Time Unsupervised Anomaly Detection Dashboard (Isolation Forest Model)</p>
+        </header>
+
+        <!-- Main Form & Status Panel -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            <!-- Input Form -->
+            <div class="bg-slate-800 border border-slate-700 rounded-lg p-5 shadow-lg">
+                <h2 class="text-xl font-semibold mb-4 text-emerald-400">Input Radar Metrics</h2>
+                <form id="radarForm" class="space-y-4">
+                    <div>
+                        <label class="block text-xs text-slate-300 font-medium mb-1">Frequency (MHz)</label>
+                        <input type="number" step="any" id="frequency" required class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-sky-500" placeholder="e.g. 2800.5">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-300 font-medium mb-1">Pulse Width (&mu;s)</label>
+                        <input type="number" step="any" id="pulseWidth" required class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-sky-500" placeholder="e.g. 1.2">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-300 font-medium mb-1">Pulse Repetition Interval - PRI (&mu;s)</label>
+                        <input type="number" step="any" id="pri" required class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-sky-500" placeholder="e.g. 1000.0">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-300 font-medium mb-1">Amplitude (dBm)</label>
+                        <input type="number" step="any" id="amplitude" required class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-sky-500" placeholder="e.g. -45.0">
+                    </div>
+                    <button type="submit" class="w-full bg-sky-600 hover:bg-sky-500 text-white font-medium py-2 rounded transition-colors text-sm">
+                        Analyze Telemetry
+                    </button>
+                </form>
+            </div>
+
+            <!-- Output Status Panel -->
+            <div class="bg-slate-800 border border-slate-700 rounded-lg p-5 shadow-lg flex flex-col justify-between">
+                <div>
+                    <h2 class="text-xl font-semibold mb-4 text-emerald-400">Inference Status</h2>
+                    <div id="outputContainer" class="p-4 bg-slate-900 rounded border border-slate-700 text-center min-h-[160px] flex flex-col justify-center items-center">
+                        <span id="outputLabel" class="text-slate-400 text-sm">Enter telemetry metrics and click Analyze to view classification.</span>
+                    </div>
+                </div>
+                <div class="text-xs text-slate-500 border-t border-slate-700 pt-3 mt-4">
+                    <span>API Endpoint: </span><code class="text-slate-400">POST /predict</code>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('radarForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const outputContainer = document.getElementById('outputContainer');
+            outputContainer.innerHTML = `<span class="text-sky-400 text-sm animate-pulse">Processing signal data...</span>`;
+
+            const payload = {
+                frequency: parseFloat(document.getElementById('frequency').value),
+                pulse_width: parseFloat(document.getElementById('pulseWidth').value),
+                pri: parseFloat(document.getElementById('pri').value),
+                amplitude: parseFloat(document.getElementById('amplitude').value)
+            };
+
+            try {
+                // Connects locally to FastAPI backend if active
+                const response = await fetch('http://127.0.0.1:8000/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) throw new Error('API Execution Error');
+
+                const data = await response.json();
+                
+                if (data.is_anomaly) {
+                    outputContainer.innerHTML = `
+                        <div class="text-red-500 font-bold text-2xl mb-1">&#9888;&#65039; ANOMALY DETECTED</div>
+                        <div class="text-xs text-slate-300">Irregular Signal Pattern Identified</div>
+                    `;
+                } else {
+                    outputContainer.innerHTML = `
+                        <div class="text-emerald-400 font-bold text-2xl mb-1">&#10004; NOMINAL SIGNAL</div>
+                        <div class="text-xs text-slate-300">Standard Telemetry Metrics</div>
+                    `;
+                }
+            } catch (err) {
+                // Fallback demo indicator for static hosting evaluation
+                outputContainer.innerHTML = `
+                    <div class="text-amber-400 font-semibold text-lg mb-1">Static Evaluation View</div>
+                    <div class="text-xs text-slate-400">Connect local FastAPI endpoint (/predict) for live inferences.</div>
+                `;
+            }
+        });
+    </script>
+</body>
+</html>
